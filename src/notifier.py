@@ -12,29 +12,27 @@ def format_notification(row, school):
     sub_bus = f"Sub # -- {sub}"
     time_slot = f"Time -- {row[4]}"
     impact = f"Impact -- {row[5]}"
-    return "\n\n".join(["Affected Bus:", bus, school, sub_bus, time_slot, impact])
-    
+    return "\n\n".join(["Affected Bus:", bus, time_slot, school, sub_bus, impact])
+
 
 def get_number_iterator():
-    return [("+14438894517", "71")]
+    return [("+14438894517", "71", "jessup")]
 
 
-def load_tokens(token_file):
-    pass
-
-
-def send_notification(phone_number, bus_number, bus_map, twilio_client):
-    for bus, message in bus_map[bus_number].items():
-        notification = twilio_client.messages.create(
-                body=message,
-                from_='+14433643381',
-                to=phone_number)
-        print(notification)
+def send_notification(phone_number, bus_number, bus_map, school, twilio_client):
+    for message in bus_map[bus_number]:
+        if school in message.lower():
+            notification = twilio_client.messages.create(
+                body=message, from_="+14433643381", to=phone_number
+            )
+            print(notification.to)
+            print(notification.status)
+            print(notification.body)
 
 
 if __name__ == "__main__":
-    account_sid = os.environ['TWILIO_ACCOUNT_SID']
-    auth_token = os.environ['TWILIO_AUTH_TOKEN']
+    account_sid = os.environ["TWILIO_ACCOUNT_SID"]
+    auth_token = os.environ["TWILIO_AUTH_TOKEN"]
     call_client = Client(account_sid, auth_token)
 
     # Welcome to the most dense, unpythonic code possible.
@@ -55,14 +53,11 @@ if __name__ == "__main__":
     )
 
     message_map = dict()
-    reorg_map = dict()
     for row in data:
-        reorg_map[row[1]] = dict()
         school = row[3]
-        message_map[(row[1], school)] = format_notification(row, school)
-    for key, val in message_map.items():
-        reorg_map[key[0]][key[1]] = val
+        message_map[row[1]] = message_map.get(row[1], []) + [
+            format_notification(row, school)
+        ]
 
-    for phone_num, bus_num in get_number_iterator():
-        send_notification(phone_num, bus_num, reorg_map, call_client)
- 
+    for phone_num, bus_num, school in get_number_iterator():
+        send_notification(phone_num, bus_num, message_map, school, call_client)
