@@ -25,4 +25,4 @@ else
     fi
 fi
 
-python src/scheduler.py
+nohup python src/scheduler.py &

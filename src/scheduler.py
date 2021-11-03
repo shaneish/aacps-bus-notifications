@@ -23,7 +23,7 @@ def weekday_schedule(times=()):
 
 
 if __name__ == "__main__":
-    weekday_schedule(times=("00:50", "07:30", "14:00", "20:00"))
+    weekday_schedule(times=("01:05", "07:30", "14:00", "20:00"))
 
     while True:
         schedule.run_pending()
