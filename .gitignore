@@ -1,2 +1,3 @@
 venv
 gen_creds.sh
+src/auth.properties

@@ -17,26 +17,49 @@ def format_notification(row, school):
     return "\n\n".join(["Affected Bus:", bus, time_slot, school, sub_bus, impact])
 
 
-def get_number_iterator():
-    return [("+14438894517", "71", "jessup")]
+def get_number_iterator(recipients_csv):
+    # Reads the phone numbers currently just stored in a CSV
+    with open(recipients_csv, "r") as recipients:
+        users = [
+            (r.split("|")[0], r.split("|")[1], r.split("|")[2], r.split("|")[3])
+            for r in recipients.read().split("\n")[1:]
+        ]
+    return users
 
 
-def send_notification(phone_number, bus_number, bus_map, school, twilio_client, twilio_number):
-    # for message in bus_map.get(bus_number, []):
-    for message in bus_map[bus_number]:
+def send_notification(
+    phone_number,
+    bus_number,
+    school,
+    always_notify,
+    bus_map,
+    twilio_client,
+    twilio_number,
+):
+    for message in bus_map.get(bus_number, []):
         if school in message.lower():
             notification = twilio_client.messages.create(
                 body=message, from_=twilio_number, to=phone_number
             )
-            print(f">>> Transmitting msg to {notification.to}")
+            print(f"<U> {phone_number}, <M> {message}")
+    if not bus_map.get(bus_number, []) and always_notify == "true":
+        school_line = f" {school.title()} " if school != "" else " "
+        message = f"Bus {bus_number}{school_line}is running as scheduled."
+        notification = twilio_client.messages.create(
+            body=message,
+            from_=twilio_number,
+            to=phone_number,
+        )
+        print(f"<U> {phone_number}, <M> {message}")
 
 
 if __name__ == "__main__":
     current_dir = pathlib.Path(__file__).parent
-    configs = ConfigParser()
+    configs, auths = ConfigParser(), ConfigParser()
     configs.read(current_dir / "configs.properties")
-    account_sid = os.environ[configs["twilio"]["sid"]]
-    auth_token = os.environ[configs["twilio"]["auth"]]
+    auths.read(current_dir / "auth.properties")
+    account_sid = auths["twilio"]["sid"]
+    auth_token = auths["twilio"]["auth"]
     call_client = Client(account_sid, auth_token)
 
     # Welcome to the most dense, unpythonic code possible.
@@ -63,11 +86,23 @@ if __name__ == "__main__":
             format_notification(row, school)
         ]
 
-    for phone_num, bus_num, school in get_number_iterator():
+    for phone_num, bus_num, school, always_notify in get_number_iterator(
+        current_dir / "recipients.csv"
+    ):
         try:
-            send_notification(phone_num, bus_num, message_map, school, call_client, configs["twilio"]["from_phone"])
+            send_notification(
+                phone_num,
+                bus_num,
+                school,
+                always_notify,
+                message_map,
+                call_client,
+                configs["twilio"]["from_phone"],
+            )
         except Exception as e:
             print(f">>> Error: {e}")
             call_client.messages.create(
-                body=f"Bus Error: {e}", from_=configs["debug"]["from_phone"], to=configs["debug"]["to_phone"]
+                body=f"Bus Error: {e}",
+                from_=configs["debug"]["from_phone"],
+                to=configs["debug"]["to_phone"],
             )

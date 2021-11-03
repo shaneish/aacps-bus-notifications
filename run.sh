@@ -25,4 +25,4 @@ else
     fi
 fi
 
-python src/notifier.py
+python src/scheduler.py
