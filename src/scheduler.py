@@ -2,6 +2,7 @@ import schedule
 from subprocess import run
 import time
 import pathlib
+from configparser import ConfigParser
 
 
 def run_notifier():
@@ -23,7 +24,10 @@ def weekday_schedule(times=()):
 
 
 if __name__ == "__main__":
-    weekday_schedule(times=("05:10", "11:30", "18:00", "00:00"))
+    current_dir = pathlib.Path(__file__).parent
+    configs = ConfigParser()
+    configs.read(current_dir / "configs.properties")
+    weekday_schedule(times=(configs["schedule"]["morning"], configs["schedule"]["afternoon"], configs["schedule"]["evening"]))
 
     while True:
         schedule.run_pending()
