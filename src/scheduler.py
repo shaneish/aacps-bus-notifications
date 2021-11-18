@@ -24,9 +24,8 @@ def weekday_schedule(times=()):
 
 
 if __name__ == "__main__":
-    current_dir = pathlib.Path(__file__).parent
     configs = ConfigParser()
-    configs.read(current_dir / "configs.properties")
+    configs.read(pathlib.Path(__file__).parent / "configs.properties")
     weekday_schedule(times=(configs["schedule"]["morning"], configs["schedule"]["afternoon"], configs["schedule"]["evening"]))
 
     while True:
