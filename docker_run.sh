@@ -1,5 +1,5 @@
 #!/bin/bash
 
 service docker start
-docker build aacps-bus-notifications .
-docker run -t -i -p 80:80 aacps-bus-notifications
+docker build -t aacps-bus-notifications .
+docker run -d -rm aacps-bus-notifications
