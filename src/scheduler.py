@@ -22,7 +22,7 @@ def weekday_schedule(times=()):
 if __name__ == "__main__":
     configs = ConfigParser()
     configs.read(pathlib.Path(__file__).parent / "configs.properties")
-    weekday_schedule(times=(configs["schedule"]["morning"], configs["schedule"]["afternoon"], configs["schedule"]["evening"]))
+    weekday_schedule(times=(configs["schedule"]["morning"], configs["schedule"]["mid_noon"], configs["schedule"]["late_noon"], configs["schedule"]["evening"]))
 
     while True:
         schedule.run_pending()
