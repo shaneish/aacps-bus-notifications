@@ -16,17 +16,13 @@ def weekday_schedule(times=()):
         schedule.every().tuesday.at(time_slot).do(run_notifier)
         schedule.every().wednesday.at(time_slot).do(run_notifier)
         schedule.every().thursday.at(time_slot).do(run_notifier)
-
-    for time_slot in times[:-1]:
         schedule.every().friday.at(time_slot).do(run_notifier)
-
-    schedule.every().sunday.at(times[-1]).do(run_notifier)
 
 
 if __name__ == "__main__":
     configs = ConfigParser()
     configs.read(pathlib.Path(__file__).parent / "configs.properties")
-    weekday_schedule(times=(configs["schedule"]["morning"], configs["schedule"]["afternoon"], configs["schedule"]["evening"]))
+    weekday_schedule(times=(configs["schedule"]["morning"], configs["schedule"]["mid_noon"], configs["schedule"]["late_noon"], configs["schedule"]["evening"]))
 
     while True:
         schedule.run_pending()

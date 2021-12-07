@@ -21,8 +21,8 @@ def get_number_iterator(recipients_csv):
     # Reads the phone numbers currently just stored in a CSV
     with open(recipients_csv, "r") as recipients:
         users = [
-            (r.split("|")[0], r.split("|")[1], r.split("|")[2], r.split("|")[3])
-            for r in recipients.read().split("\n")[1:]
+            (r.split("|")[0], r.split("|")[1], r.split("|")[2], r.split("|")[3] if len(r.split("|")) > 3 else "true")
+            for r in recipients.read().split("\n")[1:] if len(r.split("|")) >= 3
         ]
     return users
 
