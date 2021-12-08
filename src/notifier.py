@@ -12,19 +12,30 @@ import os
 def format_notification(row, school, col_map):
     bus = f"Bus # -- {row[col_map['bus']]}"
     school = f"School -- {school}"
-    sub = row[col_map['sub bus']] if row[col_map['sub bus']].strip() != "" else "no sub!"
+    sub = (
+        row[col_map["sub bus"]] if row[col_map["sub bus"]].strip() != "" else "no sub!"
+    )
     sub_bus = f"Sub # -- {sub}"
     time_slot = f"Time -- {row[col_map['schedules']]}"
     impact = f"Impact -- {row[col_map['impact']]}"
     return "\n\n".join(["Affected Bus:", bus, time_slot, school, sub_bus, impact])
 
- 
+
 def validate_data(raw_data):
     data = raw_data.replace("\n", "").replace("\r", "").replace("\t", "")
-    cols = json.loads(("[" + ", ".join(re.findall(r"columns: \[(.*?)\]", data)) + "]").lower())
-    cols = [col['title'].strip() for col in cols]
+    cols = json.loads(
+        ("[" + ", ".join(re.findall(r"columns: \[(.*?)\]", data)) + "]").lower()
+    )
+    cols = [col["title"].strip() for col in cols]
     cols_map = {col: cols.index(col) for col in cols}
-    return cols_map, 'bus' in cols and 'sub bus' in cols and 'schools' in cols and 'schedules' in cols and 'impact' in cols
+    return (
+        cols_map,
+        "bus" in cols
+        and "sub bus" in cols
+        and "schools" in cols
+        and "schedules" in cols
+        and "impact" in cols,
+    )
 
 
 def get_number_iterator(recipients_csv):
@@ -81,11 +92,11 @@ if __name__ == "__main__":
     # I know.  Sorry.
     # Extracts the table information from AACPS' bus website.
     raw_data = requests.get(configs["general"]["site"]).text
-    
+
     # log current schedule
     log_folder = current_dir / "logs"
     log_file = log_folder / f"{datetime.now().strftime('%d-%m-%Y-%H-%M-%S')}-logs.html"
-    with open(log_file, 'w') as log:
+    with open(log_file, "w") as log:
         log.write(raw_data.strip().replace("\r", ""))
 
     # delete old logs past threshold
@@ -93,14 +104,16 @@ if __name__ == "__main__":
     if len(logs) >= int(configs["general"]["log_threshold"]):
         oldest_file = min(logs, key=os.path.getctime)
         os.remove(os.path.abspath(oldest_file))
-    
+
     col_map, valid_data = validate_data(raw_data)
     if valid_data:
         data = json.loads(
             next(
                 filter(
                     lambda line: "var dataArray" in line,
-                    raw_data.split("\n")  # returns the line of the raw HTML that contains the table data
+                    raw_data.split(
+                        "\n"
+                    ),  # returns the line of the raw HTML that contains the table data
                 )
             )
             .split("=")[-1]  # drops the "var dataArray = " part of the line
@@ -111,13 +124,13 @@ if __name__ == "__main__":
         # create a mapping from bus number to all outages for that particular bus
         message_map = dict()
         for row in data:
-            message_map[row[col_map['bus']]] = message_map.get(row[col_map['bus']], []) + [
-                format_notification(row, row[col_map["schools"]], col_map)
-            ]
+            message_map[row[col_map["bus"]]] = message_map.get(
+                row[col_map["bus"]], []
+            ) + [format_notification(row, row[col_map["schools"]], col_map)]
 
         # iterate over every recipient listed in the recipients file and send notification it here is an outage
         for phone_num, bus_num, school, always_notify in get_number_iterator(
-            current_dir / configs['general']['users']
+            current_dir / configs["general"]["users"]
         ):
             try:
                 send_notification(
@@ -137,8 +150,8 @@ if __name__ == "__main__":
                     to=configs["debug"]["to_phone"],
                 )
     else:
-       call_client.messages.create(
-                    body=f"Error: Table does not have proper schema.\n\n{json.dumps(cols)}",
-                    from_=configs["debug"]["from_phone"],
-                    to=configs["debug"]["to_phone"],
-                ) 
+        call_client.messages.create(
+            body=f"Error: Table does not have proper schema.\n\n{col_map.keys()}",
+            from_=configs["debug"]["from_phone"],
+            to=configs["debug"]["to_phone"],
+        )

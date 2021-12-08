@@ -22,11 +22,10 @@ def run_notifier(call_client=call_client):
     if notifs.returncode != 0:
         print("failed")
         call_client.messages.create(
-                    body=f"Error: Notifier failed with code {notifs.returncode}",
-                    from_=configs["debug"]["from_phone"],
-                    to=configs["debug"]["to_phone"],
-                )
-
+            body=f"Error: Notifier failed with code {notifs.returncode}",
+            from_=configs["debug"]["from_phone"],
+            to=configs["debug"]["to_phone"],
+        )
 
 
 def weekday_schedule(times=()):
