@@ -3,11 +3,30 @@ from subprocess import run
 import time
 import pathlib
 from configparser import ConfigParser
+from twilio.rest import Client
+from datetime import datetime
+import os
 
 
-def run_notifier():
+configs = ConfigParser()
+configs.read(pathlib.Path(__file__).parent / "configs.properties")
+account_sid = configs["twilio"]["sid"]
+auth_token = configs["twilio"]["auth"]
+call_client = Client(os.environ[account_sid], os.environ[auth_token])
+
+
+def run_notifier(call_client=call_client):
+    print("running notifier")
     notifier = pathlib.Path(__file__).parent / "notifier.py"
-    run(f"python {notifier}", shell=True)
+    notifs = run(f"python {notifier}", shell=True)
+    if notifs.returncode != 0:
+        print("failed")
+        call_client.messages.create(
+                    body=f"Error: Notifier failed with code {notifs.returncode}",
+                    from_=configs["debug"]["from_phone"],
+                    to=configs["debug"]["to_phone"],
+                )
+
 
 
 def weekday_schedule(times=()):
@@ -20,8 +39,6 @@ def weekday_schedule(times=()):
 
 
 if __name__ == "__main__":
-    configs = ConfigParser()
-    configs.read(pathlib.Path(__file__).parent / "configs.properties")
     weekday_schedule(
         times=(
             configs["schedule"]["morning"],
@@ -30,6 +47,7 @@ if __name__ == "__main__":
             configs["schedule"]["evening"],
         )
     )
+    run_notifier()
 
     while True:
         schedule.run_pending()

@@ -71,12 +71,11 @@ def send_notification(
 
 if __name__ == "__main__":
     current_dir = pathlib.Path(__file__).parent
-    configs, auths = ConfigParser(), ConfigParser()
+    configs = ConfigParser()
     configs.read(current_dir / "configs.properties")
-    auths.read(current_dir / "auth.properties")
-    account_sid = auths["twilio"]["sid"]
-    auth_token = auths["twilio"]["auth"]
-    call_client = Client(account_sid, auth_token)
+    account_sid = configs["twilio"]["sid"]
+    auth_token = configs["twilio"]["auth"]
+    call_client = Client(os.environ[account_sid], os.environ[auth_token])
 
     # Welcome to the most dense, unpythonic code possible.
     # I know.  Sorry.
