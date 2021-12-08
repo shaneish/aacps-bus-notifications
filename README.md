@@ -4,6 +4,7 @@
 
 ### General Info
 Easy scripts to run with or without containerization.  To run, you need:
+
     - Two environment variables TWILIO_SID and TWILIO_AUTH that contain the SID and auth token for Twilio access.
 
     - User information added to a .psv file
@@ -14,6 +15,7 @@ To run with no container, run the `run.sh` script.  This will create and activat
 
 ### To-Do
 Still in development:
+
     - Need to write unit tests.
 
     - Update to save user information in a MySQL DB instead of pipe-separate values (.psv) file
