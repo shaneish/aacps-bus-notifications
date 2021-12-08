@@ -80,33 +80,27 @@ def send_notification(
         print(f"<U> {phone_number}, <M> {message}")
 
 
-if __name__ == "__main__":
-    current_dir = pathlib.Path(__file__).parent
-    configs = ConfigParser()
-    configs.read(current_dir / "configs.properties")
-    account_sid = configs["twilio"]["sid"]
-    auth_token = configs["twilio"]["auth"]
-    call_client = Client(os.environ[account_sid], os.environ[auth_token])
-
-    # Welcome to the most dense, unpythonic code possible.
-    # I know.  Sorry.
-    # Extracts the table information from AACPS' bus website.
+def notify_users(configs, logging=True):
     raw_data = requests.get(configs["general"]["site"]).text
 
-    # log current schedule
-    log_folder = current_dir / "logs"
-    log_file = log_folder / f"{datetime.now().strftime('%d-%m-%Y-%H-%M-%S')}-logs.html"
-    with open(log_file, "w") as log:
-        log.write(raw_data.strip().replace("\r", ""))
+    if logging:
+        # log current schedule
+        log_folder = current_dir / "logs"
+        log_file = log_folder / f"{datetime.now().strftime('%d-%m-%Y-%H-%M-%S')}-logs.html"
+        with open(log_file, "w") as log:
+            log.write(raw_data.strip().replace("\r", ""))
 
-    # delete old logs past threshold
-    logs = [log_folder / log for log in os.listdir(log_folder)]
-    if len(logs) >= int(configs["general"]["log_threshold"]):
-        oldest_file = min(logs, key=os.path.getctime)
-        os.remove(os.path.abspath(oldest_file))
+        # delete old logs past threshold
+        logs = [log_folder / log for log in os.listdir(log_folder)]
+        if len(logs) >= int(configs["general"]["log_threshold"]):
+            oldest_file = min(logs, key=os.path.getctime)
+            os.remove(os.path.abspath(oldest_file))
 
     col_map, valid_data = validate_data(raw_data)
     if valid_data:
+        # Welcome to the most dense, unpythonic code possible.
+        # I know.  Sorry.
+        # Extracts the table information from AACPS' bus website.
         data = json.loads(
             next(
                 filter(
@@ -155,3 +149,12 @@ if __name__ == "__main__":
             from_=configs["debug"]["from_phone"],
             to=configs["debug"]["to_phone"],
         )
+
+
+if __name__ == "__main__":
+    current_dir = pathlib.Path(__file__).parent
+    configs = ConfigParser()
+    configs.read(current_dir / "configs.properties")
+    call_client = Client(os.environ[configs["twilio"]["sid"]], os.environ[configs["twilio"]["auth"]])
+
+    notify_users(configs)
