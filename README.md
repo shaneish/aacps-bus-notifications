@@ -5,7 +5,7 @@
 ### General Info
 Easy scripts to run with or without containerization.  To run, you need:
 
-    - Two environment variables TWILIO_SID and TWILIO_AUTH that contain the SID and auth token for Twilio access.
+    - Two env vars TWILIO_SID and TWILIO_AUTH which contain SID and auth token for Twilio client.
 
     - User information added to a .psv file
 
