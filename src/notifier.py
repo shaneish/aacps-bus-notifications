@@ -6,22 +6,25 @@ from configparser import ConfigParser
 import pathlib
 from datetime import datetime
 import re
+import os
 
 
-def format_notification(row, school):
-    bus = f"Bus # -- {row[0]}"
+def format_notification(row, school, col_map):
+    bus = f"Bus # -- {row[col_map['bus']]}"
     school = f"School -- {school}"
-    sub = row[1] if row[1].strip() != "" else "no sub!"
+    sub = row[col_map['sub bus']] if row[col_map['sub bus']].strip() != "" else "no sub!"
     sub_bus = f"Sub # -- {sub}"
-    time_slot = f"Time -- {row[3]}"
-    impact = f"Impact -- {row[4]}"
+    time_slot = f"Time -- {row[col_map['schedules']]}"
+    impact = f"Impact -- {row[col_map['impact']]}"
     return "\n\n".join(["Affected Bus:", bus, time_slot, school, sub_bus, impact])
 
  
 def validate_data(raw_data):
     data = raw_data.replace("\n", "").replace("\r", "").replace("\t", "")
     cols = json.loads(("[" + ", ".join(re.findall(r"columns: \[(.*?)\]", data)) + "]").lower())
-    return cols, cols[0]['title'].strip() == 'bus' and cols[1]['title'].strip() == 'sub bus' and cols[2]['title'].strip() == 'schools' and cols[3]['title'].strip() == 'schedules' and cols[4]['title'].strip() == 'impact'
+    cols = [col['title'].strip() for col in cols]
+    cols_map = {col: cols.index(col) for col in cols}
+    return cols_map, 'bus' in cols and 'sub bus' in cols and 'schools' in cols and 'schedules' in cols and 'impact' in cols
 
 
 def get_number_iterator(recipients_csv):
@@ -79,9 +82,21 @@ if __name__ == "__main__":
     # I know.  Sorry.
     # Extracts the table information from AACPS' bus website.
     raw_data = requests.get(configs["general"]["site"]).text
-    cols, validation = validate_data(raw_data)
+    
+    # log current schedule
+    log_folder = current_dir / "logs"
+    log_file = log_folder / f"{datetime.now().strftime('%d-%m-%Y-%H-%M-%S')}-logs.html"
+    with open(log_file, 'w') as log:
+        log.write(raw_data.strip().replace("\r", ""))
 
-    if validation:
+    # delete old logs past threshold
+    logs = [log_folder / log for log in os.listdir(log_folder)]
+    if len(logs) >= int(configs["general"]["log_threshold"]):
+        oldest_file = min(logs, key=os.path.getctime)
+        os.remove(os.path.abspath(oldest_file))
+    
+    col_map, valid_data = validate_data(raw_data)
+    if valid_data:
         data = json.loads(
             next(
                 filter(
@@ -94,16 +109,11 @@ if __name__ == "__main__":
             .replace("'", '"')  # replaces single quotes with double quotes
         )
 
-        # log current schedule
-        with open(configs['general']['log'], 'a') as log:
-            log.write(f"\n{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}|{json.dumps(cols)}|{json.dumps(data)}\n")
-
         # create a mapping from bus number to all outages for that particular bus
         message_map = dict()
         for row in data:
-            school = row[2]
-            message_map[row[0]] = message_map.get(row[0], []) + [
-                format_notification(row, school)
+            message_map[row[col_map['bus']]] = message_map.get(row[col_map['bus']], []) + [
+                format_notification(row, row[col_map["schools"]], col_map)
             ]
 
         # iterate over every recipient listed in the recipients file and send notification it here is an outage
