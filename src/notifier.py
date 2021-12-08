@@ -7,6 +7,7 @@ import pathlib
 from datetime import datetime
 import re
 import os
+from argparse import ArgumentParser
 
 
 def format_notification(row, school, col_map):
@@ -80,9 +81,7 @@ def send_notification(
         print(f"<U> {phone_number}, <M> {message}")
 
 
-def notify_users(configs, logging=True):
-    raw_data = requests.get(configs["general"]["site"]).text
-
+def notify_users(configs, raw_data, logging=True):
     if logging:
         # log current schedule
         log_folder = current_dir / "logs"
@@ -111,8 +110,9 @@ def notify_users(configs, logging=True):
                 )
             )
             .split("=")[-1]  # drops the "var dataArray = " part of the line
-            .strip()[:-1]  # removes the trailing bracket
-            .replace("'", '"')  # replaces single quotes with double quotes
+            .strip()
+            .replace(";", "")  # removes the trailing semicolon
+            .replace("'", '"')  # replaces single quotes with double quotes so it can be jsonified
         )
 
         # create a mapping from bus number to all outages for that particular bus
@@ -153,8 +153,19 @@ def notify_users(configs, logging=True):
 
 if __name__ == "__main__":
     current_dir = pathlib.Path(__file__).parent
+
+    # read configs
     configs = ConfigParser()
     configs.read(current_dir / "configs.properties")
-    call_client = Client(os.environ[configs["twilio"]["sid"]], os.environ[configs["twilio"]["auth"]])
 
-    notify_users(configs)
+    # check args
+    parser = ArgumentParser(description="AACPS Bus Outage Notifier")
+    parser.add_argument("-l", "--log", action="store_true", help="Logs the current schedule")
+    args = parser.parse_args()
+
+    # create Twilio client and get the current schedule
+    call_client = Client(os.environ[configs["twilio"]["sid"]], os.environ[configs["twilio"]["auth"]])
+    raw_data = requests.get(configs["general"]["site"]).text
+
+    # notify them peeps dawg
+    notify_users(configs, raw_data, args.log)

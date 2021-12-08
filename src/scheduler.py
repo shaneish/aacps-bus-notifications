@@ -18,7 +18,7 @@ call_client = Client(os.environ[account_sid], os.environ[auth_token])
 def run_notifier(call_client=call_client):
     print("running notifier")
     notifier = pathlib.Path(__file__).parent / "notifier.py"
-    notifs = run(f"python {notifier}", shell=True)
+    notifs = run(f"python {str(notifier)} --log", shell=True)
     if notifs.returncode != 0:
         print("failed")
         call_client.messages.create(
