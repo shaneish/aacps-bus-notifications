@@ -58,7 +58,9 @@ if __name__ == "__main__":
             configs["schedule"]["late_noon"],
         )
     )
-    weekday_schedule(times=(configs["schedule"]["evening"],), notifier=run_notifier_no_compare)
+    weekday_schedule(
+        times=(configs["schedule"]["evening"],), notifier=run_notifier_no_compare
+    )
     run_notifier_no_compare()
 
     while True:
