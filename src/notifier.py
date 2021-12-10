@@ -105,14 +105,16 @@ def notify_users_map(raw_data, current_dir, configs, logging=True):
             log.write(raw_data.strip().replace("\r", ""))
 
         # delete old logs past threshold
-        logs = [
+        logs = sorted([
             logs_dir / log
             for log in os.listdir(logs_dir)
             if log.split(".")[-1] == "html"
-        ]
+        ], key=os.path.getctime)
+
         if len(logs) >= int(configs["general"]["log_threshold"]):
             oldest_file = min(logs, key=os.path.getctime)
-            os.remove(os.path.abspath(oldest_file))
+            for oldest_file in logs[:len(logs) - int(configs["general"]["log_threshold"])]:
+                os.remove(os.path.abspath(oldest_file))
 
     col_map, valid_data = validate_data(raw_data)
     if valid_data:
