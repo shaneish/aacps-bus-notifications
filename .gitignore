@@ -1,3 +1,8 @@
 venv
 gen_creds.sh
 src/auth.properties
+src/logs/*
+!src/logs/example-logs.html
+src/auth.sh
+nohup.out
+*/nohup.out
