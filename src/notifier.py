@@ -237,6 +237,7 @@ if __name__ == "__main__":
         "-p",
         "--prefix",
         type=str,
+        default="",
         help="Prefix string to beginning of all messages"
     )
     args = parser.parse_args()

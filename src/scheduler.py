@@ -16,7 +16,7 @@ call_client = Client(os.environ[configs["twilio"]["sid"]], os.environ[configs["t
 def run_notifier_compare(call_client=call_client):
     print("running notifier")
     notifier = pathlib.Path(__file__).parent / "notifier.py"
-    notifs = run(f"python {str(notifier)} -l -c -p TOMMOROW", shell=True)
+    notifs = run(f"python {str(notifier)} -l -c", shell=True)
     if notifs.returncode != 0:
         print("failed")
         call_client.messages.create(
@@ -29,7 +29,7 @@ def run_notifier_compare(call_client=call_client):
 def run_notifier_no_compare(call_client=call_client):
     print("running notifier")
     notifier = pathlib.Path(__file__).parent / "notifier.py"
-    notifs = run(f"python {str(notifier)} -l", shell=True)
+    notifs = run(f"python {str(notifier)} -l -p Tomorrow", shell=True)
     if notifs.returncode != 0:
         print("failed")
         call_client.messages.create(
