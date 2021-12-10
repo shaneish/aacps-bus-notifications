@@ -53,11 +53,11 @@ def validate_data(raw_data):
     )
 
 
-def get_number_iterator(recipients_csv):
+def get_number_iterator(configs):
     """
     Reads the phone numbers currently just stored in a CSV and returns an iterator of all user entries
     """
-    with open(recipients_csv, "r") as recipients:
+    with open(configs['general']['users'], "r") as recipients:
         users = [
             (
                 r.split("|")[0],
@@ -94,7 +94,7 @@ def notify_users_map(raw_data, current_dir, configs, logging=True):
     always_text_map = dict()
     if logging:
         # log current schedule
-        logs_dir = current_dir / "logs"
+        logs_dir = current_dir / configs['general']['logs_dir']
         log_file = (
             logs_dir / f"{datetime.now().strftime('%d-%m-%Y-%H-%M-%S')}-logs.html"
         )
@@ -141,9 +141,7 @@ def notify_users_map(raw_data, current_dir, configs, logging=True):
             ) + [format_notification(row, row[col_map["schools"]], col_map)]
 
         # iterate over every recipient listed in the recipients file and send notification it here is an outage
-        for phone_num, bus_num, school, always_notify in get_number_iterator(
-            current_dir / configs["general"]["users"]
-        ):
+        for phone_num, bus_num, school, always_notify in get_number_iterator(configs):
             phone_num, text = create_notification(
                 phone_num, bus_num, school, always_notify, message_map
             )
@@ -182,12 +180,12 @@ def send_text_messages(text_mapping, call_client, configs):
                 )
 
 
-def filter_texts(raw_texts_to_send, logs_dir, configs, compare=False):
+def filter_texts(raw_texts_to_send, configs, compare=False):
     """
     If comparing, then we want to compare the current schedule to the previous schedule and adjust messages to only send new information.
     """
     filtered_texts = dict()
-    old_texts_location = logs_dir / configs["general"]["logged_texts"]
+    old_texts_location = current_dir / configs["general"]["resources"] / configs["general"]["logged_texts"]
     if os.path.exists(old_texts_location) and compare:
         with open(old_texts_location, "r") as old_texts_file:
             previous_texts_sent = json.load(old_texts_file)
@@ -214,11 +212,13 @@ def filter_texts(raw_texts_to_send, logs_dir, configs, compare=False):
 
 if __name__ == "__main__":
     current_dir = pathlib.Path(__file__).parent
-    logs_dir = current_dir / "logs"
 
     # read configs
     configs = ConfigParser()
     configs.read(current_dir / "configs.properties")
+    logs_dir = current_dir / configs["general"]["logs_dir"]
+    if not os.path.exists(logs_dir):
+        os.makedirs(logs_dir, exist_ok=True)
 
     # check args
     parser = ArgumentParser(description="AACPS Bus Outage Notifier")
@@ -243,7 +243,7 @@ if __name__ == "__main__":
     raw_texts_to_send, always_raw_texts = notify_users_map(
         raw_data, current_dir, configs, args.log
     )
-    texts_to_send = filter_texts(raw_texts_to_send, logs_dir, configs, args.compare)
+    texts_to_send = filter_texts(raw_texts_to_send, configs, args.compare)
     send_text_messages(texts_to_send, call_client, configs)
     print("*** Normal Texts Sent ***")
     pprint(texts_to_send)
@@ -252,5 +252,5 @@ if __name__ == "__main__":
     pprint(always_raw_texts)
 
     # save current sent logs
-    with open(logs_dir / configs["general"]["logged_texts"], "w") as text_file:
+    with open(current_dir / configs["general"]["resources"] / configs["general"]["logged_texts"], "w") as text_file:
         json.dump(raw_texts_to_send, text_file, indent=4)
