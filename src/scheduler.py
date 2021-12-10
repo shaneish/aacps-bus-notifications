@@ -10,15 +10,13 @@ import os
 
 configs = ConfigParser()
 configs.read(pathlib.Path(__file__).parent / "configs.properties")
-account_sid = configs["twilio"]["sid"]
-auth_token = configs["twilio"]["auth"]
-call_client = Client(os.environ[account_sid], os.environ[auth_token])
+call_client = Client(os.environ[configs["twilio"]["sid"]], os.environ[configs["twilio"]["auth"]])
 
 
 def run_notifier_compare(call_client=call_client):
     print("running notifier")
     notifier = pathlib.Path(__file__).parent / "notifier.py"
-    notifs = run(f"python {str(notifier)} -l -c", shell=True)
+    notifs = run(f"python {str(notifier)} -l -c -p TOMMOROW", shell=True)
     if notifs.returncode != 0:
         print("failed")
         call_client.messages.create(

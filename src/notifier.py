@@ -53,22 +53,25 @@ def validate_data(raw_data):
     )
 
 
-def get_number_iterator(configs):
+def get_number_iterator(current_dir, configs):
     """
     Reads the phone numbers currently just stored in a CSV and returns an iterator of all user entries
     """
-    with open(configs['general']['users'], "r") as recipients:
-        users = [
-            (
-                r.split("|")[0],
-                r.split("|")[1],
-                r.split("|")[2],
-                r.split("|")[3] if len(r.split("|")) > 3 else "F",
-            )
-            for r in recipients.read().split("\n")[1:]
-            if len(r.split("|")) >= 3
-        ]
-    return users
+    if os.path.exists(current_dir / configs["general"]["users"]):
+        with open(current_dir / configs['general']['users'], "r") as recipients:
+            users = [
+                (
+                    r.split("|")[0],
+                    r.split("|")[1],
+                    r.split("|")[2],
+                    r.split("|")[3] if len(r.split("|")) > 3 else "F",
+                )
+                for r in recipients.read().split("\n")[1:]
+                if len(r.split("|")) >= 3
+            ]
+        return users
+    else:
+        return []
 
 
 def create_notification(phone_number, bus_number, school, always_notify, bus_map):
@@ -141,7 +144,7 @@ def notify_users_map(raw_data, current_dir, configs, logging=True):
             ) + [format_notification(row, row[col_map["schools"]], col_map)]
 
         # iterate over every recipient listed in the recipients file and send notification it here is an outage
-        for phone_num, bus_num, school, always_notify in get_number_iterator(configs):
+        for phone_num, bus_num, school, always_notify in get_number_iterator(current_dir, configs):
             phone_num, text = create_notification(
                 phone_num, bus_num, school, always_notify, message_map
             )
@@ -159,15 +162,16 @@ def notify_users_map(raw_data, current_dir, configs, logging=True):
     return text_map, always_text_map
 
 
-def send_text_messages(text_mapping, call_client, configs):
+def send_text_messages(text_mapping, call_client, configs, prefix=""):
     """
     Take a mapping from phone numbers to list of message and send each message to their corresponding phone number
     """
+    separator = " - " if (prefix != "") else ""
     for phone_num, messages in text_mapping.items():
         for message in messages:
             try:
                 call_client.messages.create(
-                    body=message,
+                    body=prefix + separator + message,
                     from_=configs["twilio"]["from_phone"],
                     to=phone_num,
                 )
@@ -199,11 +203,7 @@ def filter_texts(raw_texts_to_send, configs, compare=False):
             ):
                 new_bus_shortage = list(new_texts - old_texts)
                 old_bus_reversal = old_texts - new_texts
-                old_bus_reversal = (
-                    list(map(old_bus_reversal, reverse_notification))
-                    if old_bus_reversal
-                    else []
-                )
+                old_bus_reversal = list(map(reverse_notification, old_bus_reversal)) if old_bus_reversal else []
                 filtered_texts[phone_num] = new_bus_shortage + old_bus_reversal
         return filtered_texts
     else:
@@ -231,6 +231,12 @@ if __name__ == "__main__":
         action="store_true",
         help="Compares the current schedule to the previous one to determine messages to send",
     )
+    parser.add_argument(
+        "-p",
+        "--prefix",
+        type=str,
+        help="Prefix string to beginning of all messages"
+    )
     args = parser.parse_args()
 
     # create Twilio client and get the current schedule
@@ -244,10 +250,10 @@ if __name__ == "__main__":
         raw_data, current_dir, configs, args.log
     )
     texts_to_send = filter_texts(raw_texts_to_send, configs, args.compare)
-    send_text_messages(texts_to_send, call_client, configs)
+    send_text_messages(texts_to_send, call_client, configs, args.prefix)
     print("*** Normal Texts Sent ***")
     pprint(texts_to_send)
-    send_text_messages(always_raw_texts, call_client, configs)
+    send_text_messages(always_raw_texts, call_client, configs, args.prefix)
     print("*** Always Texts Sent ***")
     pprint(always_raw_texts)
 
