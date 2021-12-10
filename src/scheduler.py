@@ -39,6 +39,19 @@ def run_notifier_no_compare(call_client=call_client):
         )
 
 
+def run_notifier_on_start(call_client=call_client):
+    print("running notifier")
+    notifier = pathlib.Path(__file__).parent / "notifier.py"
+    notifs = run(f"python {str(notifier)} -a", shell=True)
+    if notifs.returncode != 0:
+        print("failed")
+        call_client.messages.create(
+            body=f"Error: Notifier failed with code {notifs.returncode}",
+            from_=configs["debug"]["from_phone"],
+            to=configs["debug"]["to_phone"],
+        )
+
+
 def weekday_schedule(times=(), notifier=run_notifier_compare):
     for time_slot in times:
         schedule.every().monday.at(time_slot).do(notifier)
@@ -59,7 +72,7 @@ if __name__ == "__main__":
     weekday_schedule(
         times=(configs["schedule"]["evening"],), notifier=run_notifier_no_compare
     )
-    run_notifier_no_compare()
+    run_notifier_on_start()
 
     while True:
         schedule.run_pending()

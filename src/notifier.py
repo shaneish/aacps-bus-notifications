@@ -240,6 +240,12 @@ if __name__ == "__main__":
         default="",
         help="Prefix string to beginning of all messages"
     )
+    parser.add_argument(
+        "-a",
+        "--always_only",
+        action="store_false",
+        help="Only sends 'always send' messages"
+    )
     args = parser.parse_args()
 
     # create Twilio client and get the current schedule
@@ -253,7 +259,8 @@ if __name__ == "__main__":
         raw_data, current_dir, configs, args.log
     )
     texts_to_send = filter_texts(raw_texts_to_send, configs, args.compare)
-    send_text_messages(texts_to_send, call_client, configs, args.prefix)
+    if args.always_only:
+        send_text_messages(texts_to_send, call_client, configs, args.prefix)
     print("*** Normal Texts Sent ***")
     pprint(texts_to_send)
     send_text_messages(always_raw_texts, call_client, configs, args.prefix)
