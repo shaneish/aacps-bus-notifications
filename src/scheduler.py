@@ -10,9 +10,7 @@ import os
 
 configs = ConfigParser()
 configs.read(pathlib.Path(__file__).parent / "configs.properties")
-account_sid = configs["twilio"]["sid"]
-auth_token = configs["twilio"]["auth"]
-call_client = Client(os.environ[account_sid], os.environ[auth_token])
+call_client = Client(os.environ[configs["twilio"]["sid"]], os.environ[configs["twilio"]["auth"]])
 
 
 def run_notifier_compare(call_client=call_client):
@@ -31,7 +29,20 @@ def run_notifier_compare(call_client=call_client):
 def run_notifier_no_compare(call_client=call_client):
     print("running notifier")
     notifier = pathlib.Path(__file__).parent / "notifier.py"
-    notifs = run(f"python {str(notifier)} -l", shell=True)
+    notifs = run(f"python {str(notifier)} -l -p Tomorrow", shell=True)
+    if notifs.returncode != 0:
+        print("failed")
+        call_client.messages.create(
+            body=f"Error: Notifier failed with code {notifs.returncode}",
+            from_=configs["debug"]["from_phone"],
+            to=configs["debug"]["to_phone"],
+        )
+
+
+def run_notifier_on_start(call_client=call_client):
+    print("running notifier")
+    notifier = pathlib.Path(__file__).parent / "notifier.py"
+    notifs = run(f"python {str(notifier)} -a", shell=True)
     if notifs.returncode != 0:
         print("failed")
         call_client.messages.create(
@@ -61,7 +72,7 @@ if __name__ == "__main__":
     weekday_schedule(
         times=(configs["schedule"]["evening"],), notifier=run_notifier_no_compare
     )
-    run_notifier_no_compare()
+    run_notifier_on_start()
 
     while True:
         schedule.run_pending()
