@@ -25,12 +25,16 @@ def format_notification(row, school, col_map):
     ).strip()
 
 
-def reverse_notification(notification):
+def parse_message(message):
     """
-    Parses a notification and turns it into a notice of bus cancellation cancellation.
+    Parse a text message for info
     """
-    notifs = notification.split("\n\n")[1:-1]
-    return "\n\n".join(["Bus is now running:", *notifs])
+    bus_num = re.findall(r"Bus # -- (\S+)", message)[0].strip()
+    bus_time = re.findall(r"Time -- (.+)", message)[0].strip()
+    bus_school = re.findall(r"School -- (.+)", message)[0].strip()
+    bus_sub = re.findall(r"Sub # -- (\S+)", message)[0].strip()
+    bus_impact = re.findall(r"Impact -- (.+)", message)[0].strip()
+    return bus_num, bus_time, bus_school, bus_sub, bus_impact
 
 
 def validate_data(raw_data):
@@ -76,7 +80,7 @@ def get_number_iterator(current_dir, configs):
 
 def create_notification(phone_number, bus_number, school, always_notify, bus_map):
     """
-    Returns a pair with phone number of current message (if any) to send
+    Returns a pair with phone number and current message (if any) to send
     """
     always_notify = always_notify.lower() == "t"
     for message in bus_map.get(bus_number, []):
@@ -101,6 +105,7 @@ def notify_users_map(raw_data, current_dir, configs, logging=True):
         log_file = (
             logs_dir / f"{datetime.now().strftime('%d-%m-%Y-%H-%M-%S')}-logs.html"
         )
+        print(f"*** logging website: {log_file} ***")
         with open(log_file, "w") as log:
             log.write(raw_data.strip().replace("\r", ""))
 
@@ -185,13 +190,13 @@ def send_text_messages(text_mapping, call_client, configs, prefix=""):
                     to=configs["debug"]["to_phone"],
                 )
 
-
-def filter_texts(raw_texts_to_send, configs, compare=False):
+    
+def filter_texts(raw_texts_to_send, current_dir, configs, compare=False):
     """
     If comparing, then we want to compare the current schedule to the previous schedule and adjust messages to only send new information.
     """
     filtered_texts = dict()
-    old_texts_location = current_dir / configs["general"]["resources"] / configs["general"]["logged_texts"]
+    old_texts_location = current_dir / configs["general"]["logged_texts"]
     if os.path.exists(old_texts_location) and compare:
         with open(old_texts_location, "r") as old_texts_file:
             previous_texts_sent = json.load(old_texts_file)
@@ -204,9 +209,14 @@ def filter_texts(raw_texts_to_send, configs, compare=False):
                 texts.lower() for texts in old_texts
             ):
                 new_bus_shortage = list(new_texts - old_texts)
+                combos = set(map(lambda x: (x[0], x[2]), map(parse_message, new_bus_shortage)))
                 old_bus_reversal = old_texts - new_texts
-                old_bus_reversal = list(map(reverse_notification, old_bus_reversal)) if old_bus_reversal else []
-                filtered_texts[phone_num] = new_bus_shortage + old_bus_reversal
+                reversal_messages = list()
+                for possible_reversal in old_bus_reversal:
+                    old_num, _, old_school, _, _ = parse_message(possible_reversal)
+                    if (old_num, old_school) not in combos:
+                        reversal_messages.append(f"Bus {old_num} with school(s) {old_school} is now running as scheduled.")                             
+                filtered_texts[phone_num] = new_bus_shortage + reversal_messages
         return filtered_texts
     else:
         return raw_texts_to_send
@@ -258,7 +268,7 @@ if __name__ == "__main__":
     raw_texts_to_send, always_raw_texts = notify_users_map(
         raw_data, current_dir, configs, args.log
     )
-    texts_to_send = filter_texts(raw_texts_to_send, configs, args.compare)
+    texts_to_send = filter_texts(raw_texts_to_send, current_dir, configs, args.compare)
     if args.always_only:
         send_text_messages(texts_to_send, call_client, configs, args.prefix)
     print("*** Normal Texts Sent ***")
@@ -268,5 +278,5 @@ if __name__ == "__main__":
     pprint(always_raw_texts)
 
     # save current sent logs
-    with open(current_dir / configs["general"]["resources"] / configs["general"]["logged_texts"], "w") as text_file:
+    with open(current_dir / configs["general"]["logged_texts"], "w") as text_file:
         json.dump(raw_texts_to_send, text_file, indent=4)
