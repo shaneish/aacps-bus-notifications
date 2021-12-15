@@ -15,5 +15,11 @@ def current_dir():
 
 @pytest.fixture
 def get_request(postfix="0"):
-    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), f"resources/test-site_{postfix}.html"), "r") as f:
+    with open(
+        os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            f"resources/test-site_{postfix}.html",
+        ),
+        "r",
+    ) as f:
         return f.read()
