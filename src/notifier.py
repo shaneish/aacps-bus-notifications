@@ -16,7 +16,9 @@ def format_notification(row, school, col_map):
     """
     bus = f"Bus # -- {row[col_map['bus']]}"
     school = f"School -- {school}"
-    sub = row[col_map["sub bus"]] if row[col_map["sub bus"]].strip() != "" else "NO SUB!"
+    sub = (
+        row[col_map["sub bus"]] if row[col_map["sub bus"]].strip() != "" else "NO SUB!"
+    )
     sub_bus = f"Sub # -- {sub}"
     time_slot = f"Time -- {row[col_map['schedules']]}"
     impact = f"Impact -- {row[col_map['impact']].upper()}"
@@ -25,12 +27,16 @@ def format_notification(row, school, col_map):
     ).strip()
 
 
-def reverse_notification(notification):
+def parse_message(message):
     """
-    Parses a notification and turns it into a notice of bus cancellation cancellation.
+    Parse a text message for info
     """
-    notifs = notification.split("\n\n")[1:-1]
-    return "\n\n".join(["Bus is now running:", *notifs])
+    bus_num = re.findall(r"Bus # -- (\S+)", message)[0].strip()
+    bus_time = re.findall(r"Time -- (.+)", message)[0].strip()
+    bus_school = re.findall(r"School -- (.+)", message)[0].strip()
+    bus_sub = re.findall(r"Sub # -- (\S+)", message)[0].strip()
+    bus_impact = re.findall(r"Impact -- (.+)", message)[0].strip()
+    return bus_num, bus_time, bus_school, bus_sub, bus_impact
 
 
 def validate_data(raw_data):
@@ -58,7 +64,7 @@ def get_number_iterator(current_dir, configs):
     Reads the phone numbers currently just stored in a CSV and returns an iterator of all user entries
     """
     if os.path.exists(current_dir / configs["general"]["users"]):
-        with open(current_dir / configs['general']['users'], "r") as recipients:
+        with open(current_dir / configs["general"]["users"], "r") as recipients:
             users = [
                 (
                     r.split("|")[0],
@@ -76,7 +82,7 @@ def get_number_iterator(current_dir, configs):
 
 def create_notification(phone_number, bus_number, school, always_notify, bus_map):
     """
-    Returns a pair with phone number of current message (if any) to send
+    Returns a pair with phone number and current message (if any) to send
     """
     always_notify = always_notify.lower() == "t"
     for message in bus_map.get(bus_number, []):
@@ -97,23 +103,29 @@ def notify_users_map(raw_data, current_dir, configs, logging=True):
     always_text_map = dict()
     if logging:
         # log current schedule
-        logs_dir = current_dir / configs['general']['logs_dir']
+        logs_dir = current_dir / configs["general"]["logs_dir"]
         log_file = (
             logs_dir / f"{datetime.now().strftime('%d-%m-%Y-%H-%M-%S')}-logs.html"
         )
+        print(f"*** logging website: {log_file} ***")
         with open(log_file, "w") as log:
             log.write(raw_data.strip().replace("\r", ""))
 
         # delete old logs past threshold
-        logs = sorted([
-            logs_dir / log
-            for log in os.listdir(logs_dir)
-            if log.split(".")[-1] == "html"
-        ], key=os.path.getctime)
+        logs = sorted(
+            [
+                logs_dir / log
+                for log in os.listdir(logs_dir)
+                if log.split(".")[-1] == "html"
+            ],
+            key=os.path.getctime,
+        )
 
         if len(logs) >= int(configs["general"]["log_threshold"]):
             oldest_file = min(logs, key=os.path.getctime)
-            for oldest_file in logs[:len(logs) - int(configs["general"]["log_threshold"])]:
+            for oldest_file in logs[
+                : len(logs) - int(configs["general"]["log_threshold"])
+            ]:
                 os.remove(os.path.abspath(oldest_file))
 
     col_map, valid_data = validate_data(raw_data)
@@ -146,7 +158,9 @@ def notify_users_map(raw_data, current_dir, configs, logging=True):
             ) + [format_notification(row, row[col_map["schools"]], col_map)]
 
         # iterate over every recipient listed in the recipients file and send notification it here is an outage
-        for phone_num, bus_num, school, always_notify in get_number_iterator(current_dir, configs):
+        for phone_num, bus_num, school, always_notify in get_number_iterator(
+            current_dir, configs
+        ):
             phone_num, text = create_notification(
                 phone_num, bus_num, school, always_notify, message_map
             )
@@ -186,12 +200,12 @@ def send_text_messages(text_mapping, call_client, configs, prefix=""):
                 )
 
 
-def filter_texts(raw_texts_to_send, configs, compare=False):
+def filter_texts(raw_texts_to_send, current_dir, configs, compare=False):
     """
     If comparing, then we want to compare the current schedule to the previous schedule and adjust messages to only send new information.
     """
     filtered_texts = dict()
-    old_texts_location = current_dir / configs["general"]["resources"] / configs["general"]["logged_texts"]
+    old_texts_location = current_dir / configs["general"]["logged_texts"]
     if os.path.exists(old_texts_location) and compare:
         with open(old_texts_location, "r") as old_texts_file:
             previous_texts_sent = json.load(old_texts_file)
@@ -204,9 +218,18 @@ def filter_texts(raw_texts_to_send, configs, compare=False):
                 texts.lower() for texts in old_texts
             ):
                 new_bus_shortage = list(new_texts - old_texts)
+                combos = set(
+                    map(lambda x: (x[0], x[2]), map(parse_message, new_bus_shortage))
+                )
                 old_bus_reversal = old_texts - new_texts
-                old_bus_reversal = list(map(reverse_notification, old_bus_reversal)) if old_bus_reversal else []
-                filtered_texts[phone_num] = new_bus_shortage + old_bus_reversal
+                reversal_messages = list()
+                for possible_reversal in old_bus_reversal:
+                    old_num, _, old_school, _, _ = parse_message(possible_reversal)
+                    if (old_num, old_school) not in combos:
+                        reversal_messages.append(
+                            f"Bus {old_num} with school(s) {old_school} is now running as scheduled."
+                        )
+                filtered_texts[phone_num] = new_bus_shortage + reversal_messages
         return filtered_texts
     else:
         return raw_texts_to_send
@@ -238,13 +261,13 @@ if __name__ == "__main__":
         "--prefix",
         type=str,
         default="",
-        help="Prefix string to beginning of all messages"
+        help="Prefix string to beginning of all messages",
     )
     parser.add_argument(
         "-a",
         "--always_only",
         action="store_false",
-        help="Only sends 'always send' messages"
+        help="Only sends 'always send' messages",
     )
     args = parser.parse_args()
 
@@ -258,15 +281,15 @@ if __name__ == "__main__":
     raw_texts_to_send, always_raw_texts = notify_users_map(
         raw_data, current_dir, configs, args.log
     )
-    texts_to_send = filter_texts(raw_texts_to_send, configs, args.compare)
     if args.always_only:
+        texts_to_send = filter_texts(raw_texts_to_send, current_dir, configs, args.compare)
         send_text_messages(texts_to_send, call_client, configs, args.prefix)
-    print("*** Normal Texts Sent ***")
-    pprint(texts_to_send)
+        print("*** Normal Texts Sent ***")
+        pprint(texts_to_send)
     send_text_messages(always_raw_texts, call_client, configs, args.prefix)
     print("*** Always Texts Sent ***")
     pprint(always_raw_texts)
 
     # save current sent logs
-    with open(current_dir / configs["general"]["resources"] / configs["general"]["logged_texts"], "w") as text_file:
+    with open(current_dir / configs["general"]["logged_texts"], "w") as text_file:
         json.dump(raw_texts_to_send, text_file, indent=4)

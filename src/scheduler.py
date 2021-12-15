@@ -10,7 +10,9 @@ import os
 
 configs = ConfigParser()
 configs.read(pathlib.Path(__file__).parent / "configs.properties")
-call_client = Client(os.environ[configs["twilio"]["sid"]], os.environ[configs["twilio"]["auth"]])
+call_client = Client(
+    os.environ[configs["twilio"]["sid"]], os.environ[configs["twilio"]["auth"]]
+)
 
 
 def run_notifier_compare(call_client=call_client):
@@ -70,9 +72,10 @@ if __name__ == "__main__":
         )
     )
     weekday_schedule(
-        times=(configs["schedule"]["evening"],), notifier=run_notifier_no_compare
+        times=(configs["schedule"]["evening"],),
+        notifier=run_notifier_no_compare,  # on first evening look for next day, don't compare to current day
     )
-    run_notifier_on_start()
+    run_notifier_on_start()  # send notifications only to all 'always notify' users
 
     while True:
         schedule.run_pending()

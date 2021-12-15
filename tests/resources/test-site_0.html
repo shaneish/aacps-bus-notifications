@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Daily Reported Bus Route Issues</title>
+
+    <script>
+        var dataArray = [['201', '202', 'OLD MILL HS', 'AM & PM', '20 MINS LATE', 'Sin Servicio'], ['71', '', 'JESSUP ES', 'AM & PM', 'No Service', 'Sin Servicio'], ['202', '', 'MEADE HS', 'AM & PM', 'No Service', 'Sin Servicio']];
+        $(document).ready(function () {
+            $('#data-table').DataTable({
+                destroy: true,
+                bStateSave: true,
+                data: dataArray,
+                paging: false,
+                order: [[0, "asc"]],
+                columns: [
+                    { "title": "Bus" },
+                    { "title": "Sub Bus"},
+                    { "title": "Schools" },
+                    { "title": "Schedules" },
+                    { "title": "Impact" },
+                    { "title": "Impacto" }
+                ]
+            });
+            setTimeout("window.open(self.location, '_self');", 60000 * 3);
+        });
+    </script>
+</head>
+
+</html>

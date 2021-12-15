@@ -6,3 +6,4 @@ src/resources/*
 src/auth.sh
 nohup.out
 */nohup.out
+*/__pycache__
