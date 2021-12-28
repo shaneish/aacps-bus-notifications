@@ -1,4 +1,4 @@
-FROM python:3.7.12-bullseye
+FROM python:3.8.12-bullseye
 
 ADD requirements.txt /
 COPY src /src
