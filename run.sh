@@ -15,7 +15,7 @@ if [ -d "venv" ]; then
     fi
 else
     echo "*** setting up virtual env ***"
-    python3.7 -m venv venv
+    python3.8 -m venv venv
     if [ $OSTYPE = msys ]; then
         . ./venv/Scripts/activate
         pip install -r requirements.txt

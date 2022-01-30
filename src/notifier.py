@@ -65,14 +65,20 @@ def get_number_iterator(current_dir, configs):
     """
     if os.path.exists(current_dir / configs["general"]["users"]):
         with open(current_dir / configs["general"]["users"], "r") as recipients:
+            all_lines = recipients.read().lower().split("\n")
+            header = all_lines[0].split("|")
+            contact_idx = header.index("contact")
+            bus_idx = header.index("bus")
+            school_idx = header.index("school")
+            notify_idx = header.index("always_notify")
             users = [
                 (
-                    r.split("|")[0],
-                    r.split("|")[1],
-                    r.split("|")[2],
-                    r.split("|")[3] if len(r.split("|")) > 3 else "F",
+                    r.split("|")[contact_idx],
+                    r.split("|")[bus_idx],
+                    r.split("|")[school_idx],
+                    r.split("|")[notify_idx] if len(r.split("|")) > 3 else "F",
                 )
-                for r in recipients.read().split("\n")[1:]
+                for r in all_lines[1:]
                 if len(r.split("|")) >= 3
             ]
         return users
