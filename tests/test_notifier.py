@@ -15,7 +15,7 @@ def test_parse_message():
 
 
 def test_notify_users_general_no_logging_no_history(current_dir, get_request):
-    configs = {"general": {"users": "resources/recipients_0.psv"}}
+    configs = {"general": {"users": "resources/recipients_0.db"}}
     raw_texts, always_raw_texts = notifier.notify_users_map(
         get_request, current_dir, configs, logging=False
     )
@@ -38,7 +38,7 @@ def test_notify_users_general_no_logging_no_history(current_dir, get_request):
 def test_raw_text_filter_general_no_reversal(current_dir, get_request):
     configs = {
         "general": {
-            "users": "resources/recipients_0.psv",
+            "users": "resources/recipients_0.db",
             "logged_texts": "resources/previous_state_0.json",
         }
     }

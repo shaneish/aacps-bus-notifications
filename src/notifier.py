@@ -8,6 +8,7 @@ from datetime import datetime
 import re
 import os
 from argparse import ArgumentParser
+import sqlite3
 
 
 def format_notification(row, school, col_map):
@@ -60,37 +61,35 @@ def validate_data(raw_data):
 
 
 def get_number_iterator(current_dir, configs):
-    """
-    Reads the phone numbers currently just stored in a CSV and returns an iterator of all user entries
-    """
-    if os.path.exists(current_dir / configs["general"]["users"]):
-        with open(current_dir / configs["general"]["users"], "r") as recipients:
-            all_lines = recipients.read().lower().split("\n")
-            header = all_lines[0].split("|")
-            contact_idx = header.index("contact")
-            bus_idx = header.index("bus")
-            school_idx = header.index("school")
-            notify_idx = header.index("always_notify")
-            users = [
-                (
-                    r.split("|")[contact_idx],
-                    r.split("|")[bus_idx],
-                    r.split("|")[school_idx],
-                    r.split("|")[notify_idx] if len(r.split("|")) > 3 else "F",
-                )
-                for r in all_lines[1:]
-                if len(r.split("|")) >= 3
-            ]
-        return users
-    else:
-        return []
+    conn = sqlite3.connect(current_dir / configs["general"]["users"])
+    cursor = conn.cursor()
+
+    print("[info] Creating table if needed.")
+    cursor.execute("CREATE TABLE IF NOT EXISTS users \
+                   (contact TEXT NOT NULL, \
+                   bus TEXT NOT NULL, \
+                   school TEXT, \
+                   always_notify CHAR(1))")
+    cursor.execute("SELECT count(*) FROM users")
+    user_count = cursor.fetchall()[0][0]
+    print(f"[info] Found {user_count} records.")
+    if user_count == 0:
+        print("[info] Adding debug number to empty DB.")
+        cursor.execute(f"INSERT INTO users (contact, bus, school, always_notify) \
+                        VALUES ('{configs['debug']['to_phone']}', '71', 'jessup', 'T')")
+        conn.commit()
+    print(f"[info] Pulling all records in DB.")
+    cursor.execute("SELECT contact, bus, school, always_notify FROM users;")
+    user_list = cursor.fetchall()
+    conn.close()
+    return user_list
 
 
 def create_notification(phone_number, bus_number, school, always_notify, bus_map):
     """
     Returns a pair with phone number and current message (if any) to send
     """
-    always_notify = always_notify.lower() == "t"
+    always_notify = always_notify == "T"
     for message in bus_map.get(bus_number, []):
         if school in message.lower():
             return (phone_number, message)
@@ -113,7 +112,7 @@ def notify_users_map(raw_data, current_dir, configs, logging=True):
         log_file = (
             logs_dir / f"{datetime.now().strftime('%d-%m-%Y-%H-%M-%S')}-logs.html"
         )
-        print(f"*** logging website: {log_file} ***")
+        print(f"[info] Logging website: {log_file}")
         with open(log_file, "w") as log:
             log.write(raw_data.strip().replace("\r", ""))
 
@@ -191,6 +190,7 @@ def send_text_messages(text_mapping, call_client, configs, prefix=""):
     separator = " - " if (prefix != "") else ""
     for phone_num, messages in text_mapping.items():
         for message in messages:
+            print(f"[info] Sending message: {message}")
             try:
                 call_client.messages.create(
                     body=prefix + separator + message,
@@ -198,7 +198,7 @@ def send_text_messages(text_mapping, call_client, configs, prefix=""):
                     to=phone_num,
                 )
             except Exception as e:
-                print(f">>> Error: {e}")
+                print(f"[error] Sending message: {e}")
                 call_client.messages.create(
                     body=f"Bus Error: {e} / Phone: {phone_num} / Message: {message}",
                     from_=configs["debug"]["from_phone"],
@@ -290,10 +290,10 @@ if __name__ == "__main__":
     if args.always_only:
         texts_to_send = filter_texts(raw_texts_to_send, current_dir, configs, args.compare)
         send_text_messages(texts_to_send, call_client, configs, args.prefix)
-        print("*** Normal Texts Sent ***")
+        print("[info] Normal texts sent.")
         pprint(texts_to_send)
     send_text_messages(always_raw_texts, call_client, configs, args.prefix)
-    print("*** Always Texts Sent ***")
+    print("[info] All texts sent.")
     pprint(always_raw_texts)
 
     # save current sent logs
