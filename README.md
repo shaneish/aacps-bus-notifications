@@ -16,8 +16,8 @@ To run with no container, run the `run.sh` script.  This will create and activat
 ### To-Do
 Still in development:
     
-    - ~~Need to write unit tests~~
+   - ~~Need to write unit tests~~
     
-    - ~~Update to store user information in DB instead of pipe separated values (.psv) file~~
+   - ~~Update to store user information in DB instead of pipe separated values (.psv) file~~
 
-    - Create an API with Flask that allows DB updates
+   - Create an API with Flask that allows DB updates
