@@ -19,3 +19,5 @@ Still in development:
     - N̶e̶e̶d̶ ̶t̶o̶ ̶w̶r̶i̶t̶e̶ ̶u̶n̶i̶t̶ ̶t̶e̶s̶t̶s̶
 
     - U̶p̶d̶a̶t̶e̶ ̶t̶o̶ ̶s̶a̶v̶e̶ ̶u̶s̶e̶r̶ ̶i̶n̶f̶o̶r̶m̶a̶t̶i̶o̶n̶ ̶i̶n̶ ̶a̶ ̶D̶B̶ ̶i̶n̶s̶t̶e̶a̶d̶ ̶o̶f̶ ̶p̶i̶p̶e̶-̶s̶e̶p̶a̶r̶a̶t̶e̶ ̶v̶a̶l̶u̶e̶s̶ ̶(̶.̶p̶s̶v̶)̶ ̶f̶i̶l̶e̶
+
+    - Create an API with Flask that allows DB updates
