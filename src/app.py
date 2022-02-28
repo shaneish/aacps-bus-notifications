@@ -38,17 +38,31 @@ def get_users():
     }
 
 
-@app.route("/remove/<phone_num>", methods=["GET"])
+@app.route("/remove/<phone_num>", methods=["POST"])
 def remove_user(phone_num):
     phone_number = "+1" + phone_num
     conn = get_db()
     cursor = conn.cursor()
-    try:
+    cursor.execute(
+        f'SELECT contact, bus, school, always_notify FROM users WHERE contact = "{phone_number}"'
+    )
+    found_records = cursor.fetchall()
+    if found_records:
         cursor.execute(f'DELETE FROM users WHERE contact = "{phone_number}";')
+        conn.commit()
         conn.close()
-        return f"Removed user phone number: {phone_number}"
-    except Exception as e:
-        return f"Error removing user from database: {e}"
+        return {
+            "removed_users": [
+                {
+                    "contact": user[0],
+                    "bus": user[1],
+                    "school": user[2],
+                    "always_notify": user[3],
+                }
+                for user in found_records
+            ],
+            "status": 200,
+        }
 
 
 if __name__ == "__main__":
