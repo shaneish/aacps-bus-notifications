@@ -64,12 +64,16 @@ def weekday_schedule(times=(), notifier=run_notifier_compare):
 
 
 if __name__ == "__main__":
-    scheduled_times = configs["schedule"]["morning"].split(",") + configs["schedule"]["afternoon"].split(",") + configs["schedule"]["evening"].split(",")
+    morning_times = configs["schedule"]["morning"].split(",")
+    noon_times = configs["schedule"]["afternoon"].split(",")
+    evening_times = configs["schedule"]["evening"].split(",")
+    scheduled_times = tuple(morning_times + noon_times + evening_times)
+    print(scheduled_times)
     weekday_schedule(
-        times=tuple(scheduled_times)
+        times=scheduled_times
     )
     weekday_schedule(
-        times=(configs["schedule"]["evening"],),
+        times=tuple(evening_times),
         notifier=run_notifier_no_compare,  # on first evening look for next day, don't compare to current day
     )
     run_notifier_on_start()  # send notifications only to all 'always notify' users
