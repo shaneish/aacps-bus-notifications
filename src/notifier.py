@@ -68,6 +68,7 @@ def get_number_iterator(current_dir, configs):
     cursor.execute(
         "CREATE TABLE IF NOT EXISTS users \
                    (contact TEXT NOT NULL, \
+                   provider TEXT NOT NULL, \
                    bus TEXT NOT NULL, \
                    school TEXT, \
                    always_notify CHAR(1))"
@@ -78,13 +79,13 @@ def get_number_iterator(current_dir, configs):
     if user_count == 0:
         print("[info] Adding debug number to empty DB.")
         cursor.execute(
-            f"INSERT INTO users (contact, bus, school, always_notify) \
-                        VALUES ('{configs['debug']['to_phone']}', '71', 'jessup', 'T')"
+            f"INSERT INTO users (contact, bus, school, always_notify, provider) \
+                        VALUES ('{configs['debug']['to_phone']}', '71', 'jessup', 'T', 'verizon')"
         )
-        conn.commit()
     print(f"[info] Pulling all records in DB.")
-    cursor.execute("SELECT contact, bus, school, always_notify FROM users;")
+    cursor.execute("SELECT contact, bus, school, always_notify, provider FROM users;")
     user_list = cursor.fetchall()
+    conn.commit()
     conn.close()
     return user_list
 
@@ -167,7 +168,8 @@ def notify_users_map(raw_data, current_dir, configs, logging=True):
             ) + [format_notification(row, row[col_map["schools"]], col_map)]
 
         # iterate over every recipient listed in the recipients file and send notification it here is an outage
-        for phone_num, bus_num, school, always_notify in get_number_iterator(
+        # TODO: Add email based provider texts and substitute provider below
+        for phone_num, bus_num, school, always_notify, _ in get_number_iterator(
             current_dir, configs
         ):
             phone_num, text = create_notification(

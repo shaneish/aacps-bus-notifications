@@ -64,12 +64,9 @@ def weekday_schedule(times=(), notifier=run_notifier_compare):
 
 
 if __name__ == "__main__":
+    scheduled_times = configs["schedule"]["morning"].split(",") + configs["schedule"]["afternoon"].split(",") + configs["schedule"]["evening"].split(",")
     weekday_schedule(
-        times=(
-            configs["schedule"]["morning"],
-            configs["schedule"]["mid_noon"],
-            configs["schedule"]["late_noon"],
-        )
+        times=tuple(scheduled_times)
     )
     weekday_schedule(
         times=(configs["schedule"]["evening"],),
