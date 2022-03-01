@@ -65,18 +65,22 @@ def get_number_iterator(current_dir, configs):
     cursor = conn.cursor()
 
     print("[info] Creating table if needed.")
-    cursor.execute("CREATE TABLE IF NOT EXISTS users \
+    cursor.execute(
+        "CREATE TABLE IF NOT EXISTS users \
                    (contact TEXT NOT NULL, \
                    bus TEXT NOT NULL, \
                    school TEXT, \
-                   always_notify CHAR(1))")
+                   always_notify CHAR(1))"
+    )
     cursor.execute("SELECT count(*) FROM users")
     user_count = cursor.fetchall()[0][0]
     print(f"[info] Found {user_count} records.")
     if user_count == 0:
         print("[info] Adding debug number to empty DB.")
-        cursor.execute(f"INSERT INTO users (contact, bus, school, always_notify) \
-                        VALUES ('{configs['debug']['to_phone']}', '71', 'jessup', 'T')")
+        cursor.execute(
+            f"INSERT INTO users (contact, bus, school, always_notify) \
+                        VALUES ('{configs['debug']['to_phone']}', '71', 'jessup', 'T')"
+        )
         conn.commit()
     print(f"[info] Pulling all records in DB.")
     cursor.execute("SELECT contact, bus, school, always_notify FROM users;")
@@ -288,7 +292,9 @@ if __name__ == "__main__":
         raw_data, current_dir, configs, args.log
     )
     if args.always_only:
-        texts_to_send = filter_texts(raw_texts_to_send, current_dir, configs, args.compare)
+        texts_to_send = filter_texts(
+            raw_texts_to_send, current_dir, configs, args.compare
+        )
         send_text_messages(texts_to_send, call_client, configs, args.prefix)
         print("[info] Normal texts sent.")
         pprint(texts_to_send)
