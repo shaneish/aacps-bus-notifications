@@ -6,3 +6,5 @@ src/auth.sh
 nohup.out
 */nohup.out
 */__pycache__
+*/working.ipynb
+*/**/working.ipynb
