@@ -16,9 +16,10 @@ def test_parse_message():
 
 def test_notify_users_general_no_logging_no_history(current_dir, get_request):
     configs = {"general": {"users": "resources/recipients_0.db"}}
-    raw_texts, always_raw_texts = notifier.notify_users_map(
+    raw_texts, always_raw_texts, carrier_map = notifier.notify_users_map(
         get_request, current_dir, configs, logging=False
     )
+    assert carrier_map == {'+18888888888': 'verizon', '+28888888888': 'verizon', '+38888888888': 'verizon', '+48888888888': 'verizon'}
     assert raw_texts == {
         "+18888888888": [
             "Affected Bus:\n\nBus # -- 202\n\nTime -- AM & PM\n\nSchool -- MEADE HS\n\nSub # -- NO SUB!\n\nImpact -- NO SERVICE"
@@ -42,9 +43,10 @@ def test_raw_text_filter_general_no_reversal(current_dir, get_request):
             "logged_texts": "resources/previous_state_0.json",
         }
     }
-    raw_texts, always_raw_texts = notifier.notify_users_map(
+    raw_texts, always_raw_texts, carrier_map = notifier.notify_users_map(
         get_request, current_dir, configs, logging=False
     )
+    assert carrier_map == {'+18888888888': 'verizon', '+28888888888': 'verizon', '+38888888888': 'verizon', '+48888888888': 'verizon'}
     filtered_texts = notifier.filter_texts(raw_texts, current_dir, configs, True)
     assert filtered_texts == {
         "+18888888888": [
