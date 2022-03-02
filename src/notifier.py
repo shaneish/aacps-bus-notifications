@@ -9,6 +9,77 @@ import re
 import os
 from argparse import ArgumentParser
 import sqlite3
+import smtplib
+
+
+carrier_map = {
+	'att':    'mms.att.net',
+	'tmobile':'tmomail.net',
+	'verizon':'vtext.com',
+	'sprint': 'page.nextel.com',
+	'google': 'msg.fi.google.com'
+}
+
+
+def parse_phone_num(n):
+    stripped_n = "".join(c for c in n if c.isdigit())
+    if len(stripped_n) > 8:
+        return stripped_n[-10:]
+    else:
+        return stripped_n
+
+
+def send_txt(configs, phone_num, carrier, message, twilio_client):
+    carrier_postfix = configs['carriers'].get(carrier.lower(), None)
+    if carrier_postfix is not None:
+        to_number = f'{parse_phone_num(phone_num)}@{carrier_postfix}'
+        # Establish a secure session with gmail's outgoing SMTP server using your gmail account
+        server = smtplib.SMTP("smtp.gmail.com", 587 )
+        server.starttls()
+        server.login(configs['text']['email'], os.environ[configs['text']['pwd']])
+
+        # Send text message through SMS gateway of destination number
+        try:
+            server.sendmail(configs['text']['email'], to_number, message)
+            return {
+                'to': to_number,
+                'message': message,
+                'carrier': carrier,
+                'error': None
+            }
+        except Exception as e:
+            return {
+                'to': to_number,
+                'message': message,
+                'carrier': carrier,
+                'error': e
+            }
+    elif carrier == "twilio":
+        try:
+            twilio_client.messages.create(
+                        body=message,
+                        from_=configs["twilio"]["from_phone"],
+                        to=phone_num,
+                    )
+            return {
+                'to': phone_num,
+                'message': message,
+                'carrier': carrier,
+                'error': None
+            }
+        except Exception as e:
+            return {
+                'to': phone_num,
+                'message': message,
+                'carrier': carrier,
+                'error': e
+            }
+    return {
+        'to': phone_num,
+        'message': message,
+        'carrier': carrier,
+        'error': ValueError('Incorrect Carrier Information')
+        }
 
 
 def format_notification(row, school, col_map):
@@ -68,7 +139,7 @@ def get_number_iterator(current_dir, configs):
     cursor.execute(
         "CREATE TABLE IF NOT EXISTS users \
                    (contact TEXT NOT NULL, \
-                   provider TEXT NOT NULL, \
+                   provider TEXT, \
                    bus TEXT NOT NULL, \
                    school TEXT, \
                    always_notify CHAR(1))"
@@ -80,7 +151,8 @@ def get_number_iterator(current_dir, configs):
         print("[info] Adding debug number to empty DB.")
         cursor.execute(
             f"INSERT INTO users (contact, bus, school, always_notify, provider) \
-                        VALUES ('{configs['debug']['to_phone']}', '71', 'jessup', 'T', 'verizon')"
+                        VALUES ('{configs['debug']['to_phone']}', '71', 'jessup', 'F', 'twilio'), \
+                               ('{configs['debug']['to_phone']}', '71', 'jessup', 'T', 'google')"
         )
     print(f"[info] Pulling all records in DB.")
     cursor.execute("SELECT contact, bus, school, always_notify, provider FROM users;")
@@ -162,6 +234,7 @@ def notify_users_map(raw_data, current_dir, configs, logging=True):
 
         # create a mapping from bus number to all outages for that particular bus
         message_map = dict()
+        carrier_map = dict()
         for row in data:
             message_map[row[col_map["bus"]]] = message_map.get(
                 row[col_map["bus"]], []
@@ -169,47 +242,43 @@ def notify_users_map(raw_data, current_dir, configs, logging=True):
 
         # iterate over every recipient listed in the recipients file and send notification it here is an outage
         # TODO: Add email based provider texts and substitute provider below
-        for phone_num, bus_num, school, always_notify, _ in get_number_iterator(
+        for phone_num, bus_num, school, always_notify, carrier in get_number_iterator(
             current_dir, configs
-        ):
+        ):  
+            carrier_map[phone_num] = carrier
             phone_num, text = create_notification(
                 phone_num, bus_num, school, always_notify, message_map
             )
             if (phone_num is not None) and (text is not None):
                 if always_notify.lower() == "t":
-                    always_text_map[phone_num] = always_text_map.get(phone_num, []) + [
-                        text
-                    ]
+                    always_text_map[phone_num] = always_text_map.get(phone_num, []) + [text]
                 else:
                     text_map[phone_num] = text_map.get(phone_num, []) + [text]
     else:
         text_map[configs["debug"]["to_phone"]] = [
             f"Error: Table does not have proper schema.\n\n{col_map.keys()}"
         ]
-    return text_map, always_text_map
+    print(text_map)
+    return text_map, always_text_map, carrier_map
 
 
-def send_text_messages(text_mapping, call_client, configs, prefix=""):
+def send_text_messages(text_mapping, call_client, configs, carrier_map, prefix=""):
     """
     Take a mapping from phone numbers to list of message and send each message to their corresponding phone number
     """
     separator = " - " if (prefix != "") else ""
     for phone_num, messages in text_mapping.items():
+        carrier = carrier_map.get(phone_num, '')
         for message in messages:
             print(f"[info] Sending message: {message}")
-            try:
-                call_client.messages.create(
-                    body=prefix + separator + message,
-                    from_=configs["twilio"]["from_phone"],
-                    to=phone_num,
-                )
-            except Exception as e:
-                print(f"[error] Sending message: {e}")
-                call_client.messages.create(
-                    body=f"Bus Error: {e} / Phone: {phone_num} / Message: {message}",
-                    from_=configs["debug"]["from_phone"],
-                    to=configs["debug"]["to_phone"],
-                )
+            status = send_txt(configs, phone_num, carrier, prefix + separator + message, call_client)
+            pprint(status)
+            possible_error = status.get("error", "")
+            if possible_error is None:
+                print(f"[info] Message successfully sent to {phone_num}")
+            else:
+                print(f"[error] Message failed with error: {possible_error}")
+                send_txt(configs, configs['debug']['to_phone'], carrier, f"Bus Error: {possible_error} / Phone: {phone_num} / Message: {message}", call_client)
 
 
 def filter_texts(raw_texts_to_send, current_dir, configs, compare=False):
@@ -290,17 +359,17 @@ if __name__ == "__main__":
     raw_data = requests.get(configs["general"]["site"]).text
 
     # notify them peeps dawg
-    raw_texts_to_send, always_raw_texts = notify_users_map(
+    raw_texts_to_send, always_raw_texts, carrier_map = notify_users_map(
         raw_data, current_dir, configs, args.log
     )
     if args.always_only:
         texts_to_send = filter_texts(
             raw_texts_to_send, current_dir, configs, args.compare
         )
-        send_text_messages(texts_to_send, call_client, configs, args.prefix)
+        send_text_messages(texts_to_send, call_client, configs, carrier_map, args.prefix)
         print("[info] Normal texts sent.")
         pprint(texts_to_send)
-    send_text_messages(always_raw_texts, call_client, configs, args.prefix)
+    send_text_messages(always_raw_texts, call_client, configs, carrier_map, args.prefix)
     print("[info] All texts sent.")
     pprint(always_raw_texts)
 
