@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify
 from configparser import ConfigParser
 import pathlib
 import sqlite3
-import json
 
 
 app = Flask(__name__)
@@ -24,6 +23,7 @@ def jsonify_user_entry(user):
         "bus": user[1],
         "school": user[2],
         "always_notify": user[3],
+        "provider": user[4]
     }
 
 
@@ -36,7 +36,7 @@ def get_db(configs=configs, current_dir=current_dir):
 def all_entries():
     conn = get_db()
     cursor = conn.cursor()
-    cursor = log_query(cursor, "SELECT contact, bus, school, always_notify FROM users;")
+    cursor = log_query(cursor, "SELECT contact, bus, school, always_notify, provider FROM users;")
     user_list = cursor.fetchall()
     conn.close()
     return {
@@ -52,7 +52,7 @@ def user(phone_num):
     cursor = conn.cursor()
     cursor = log_query(
         cursor,
-        f"SELECT contact, bus, school, always_notify FROM users WHERE contact = '{phone_number}';",
+        f"SELECT contact, bus, school, always_notify, provider FROM users WHERE contact = '{phone_number}';",
     )
     user_list = cursor.fetchall()
     conn.close()
@@ -76,7 +76,7 @@ def remove(phone_num):
     cursor = conn.cursor()
     cursor = log_query(
         cursor,
-        f"SELECT contact, bus, school, always_notify FROM users WHERE contact = '{phone_number}'"
+        f"SELECT contact, bus, school, always_notify, provider FROM users WHERE contact = '{phone_number}'"
         + bus
         + school
         + always_notify,
@@ -103,14 +103,15 @@ def add_entry(phone_num):
     bus = request.args.get("bus")
     school = request.args.get("school")
     always_notify = request.args.get("always_notify", "F")
+    provider = request.args.get("provider")
     phone_number = "+1" + phone_num
     school = school.lower().replace("_", " ")
     conn = get_db()
     cursor = conn.cursor()
-    if bus and school:
+    if bus and school and provider:
         cursor = log_query(
             cursor,
-            f"INSERT INTO users (contact, bus, school, always_notify) VALUES ('{phone_number}', '{bus}', '{school}', '{always_notify}');",
+            f"INSERT INTO users (contact, bus, school, always_notify, provider) VALUES ('{phone_number}', '{bus}', '{school}', '{always_notify}', '{provider}');",
         )
         conn.commit()
         conn.close()
@@ -122,7 +123,7 @@ def add_entry(phone_num):
         conn.close()
         return {
             "status": 400,
-            "message": "/add_user requires both a 'bus' parameter and 'school' parameter.",
+            "message": "/add_user requires a 'bus', 'provider', and'school' parameter.",
         }
 
 
