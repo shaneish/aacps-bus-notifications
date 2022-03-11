@@ -29,6 +29,15 @@ def parse_phone_num(n):
         return stripped_n
 
 
+def txt_return(to, message, carrier, error):
+    return {
+        'to': to,
+        'message': message,
+        'carrier': carrier,
+        'error': error
+    }
+
+
 def send_txt(configs, phone_num, carrier, message, twilio_client):
     carrier_postfix = configs['carriers'].get(carrier.lower(), None)
     if carrier_postfix is not None:
