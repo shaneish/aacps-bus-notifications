@@ -13,9 +13,9 @@ import smtplib
 
 
 carrier_map = {
-	'att':    'mms.att.net',
-	'tmobile':'tmomail.net',
-	'verizon':'vtext.com',
+	'att': 'mms.att.net',
+	'tmobile': 'tmomail.net',
+	'verizon': 'vtext.com',
 	'sprint': 'page.nextel.com',
 	'google': 'msg.fi.google.com'
 }
@@ -40,7 +40,9 @@ def txt_return(to, message, carrier, error):
 
 def send_txt(configs, phone_num, carrier, message, twilio_client):
     carrier_postfix = configs['carriers'].get(carrier.lower(), None)
+    print(f"[info] Carrier for {phone_num} -", carrier_postfix)
     if carrier_postfix is not None:
+        print("[info] Sending txt inside email provider.")
         to_number = f'{parse_phone_num(phone_num)}@{carrier_postfix}'
         # Establish a secure session with gmail's outgoing SMTP server using your gmail account
         server = smtplib.SMTP("smtp.gmail.com", 587 )
@@ -64,6 +66,7 @@ def send_txt(configs, phone_num, carrier, message, twilio_client):
                 'error': e
             }
     elif carrier == "twilio":
+        print("[info] Sending txt via Twilio.")
         try:
             twilio_client.messages.create(
                         body=message,
@@ -83,6 +86,7 @@ def send_txt(configs, phone_num, carrier, message, twilio_client):
                 'carrier': carrier,
                 'error': e
             }
+    print("[info] Not sending message.")
     return {
         'to': phone_num,
         'message': message,
@@ -253,7 +257,7 @@ def notify_users_map(raw_data, current_dir, configs, logging=True):
         # TODO: Add email based provider texts and substitute provider below
         for phone_num, bus_num, school, always_notify, carrier in get_number_iterator(
             current_dir, configs
-        ):  
+        ):
             carrier_map[phone_num] = carrier
             phone_num, text = create_notification(
                 phone_num, bus_num, school, always_notify, message_map
