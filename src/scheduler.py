@@ -16,7 +16,7 @@ call_client = Client(
 
 
 def run_notifier_compare(call_client=call_client):
-    print("running notifier")
+    print("[info] running notifier")
     notifier = pathlib.Path(__file__).parent / "notifier.py"
     notifs = run(f"python {str(notifier)} -l -c", shell=True)
     if notifs.returncode != 0:
@@ -29,7 +29,7 @@ def run_notifier_compare(call_client=call_client):
 
 
 def run_notifier_no_compare(call_client=call_client):
-    print("running notifier")
+    print("[info] running notifier")
     notifier = pathlib.Path(__file__).parent / "notifier.py"
     notifs = run(f"python {str(notifier)} -l -p Tomorrow", shell=True)
     if notifs.returncode != 0:
@@ -42,7 +42,7 @@ def run_notifier_no_compare(call_client=call_client):
 
 
 def run_notifier_on_start(call_client=call_client):
-    print("running notifier")
+    print("[info] running notifier")
     notifier = pathlib.Path(__file__).parent / "notifier.py"
     notifs = run(f"python {str(notifier)} -a", shell=True)
     if notifs.returncode != 0:
